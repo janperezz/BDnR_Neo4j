@@ -1,0 +1,46 @@
+// Creació de restriccions i índexos
+CREATE CONSTRAINT habitatge_unique_id_constraint IF NOT EXISTS FOR (h:Habitatge) REQUIRE h.id_llar IS UNIQUE;
+CREATE CONSTRAINT individu_unique_id_constraint IF NOT EXISTS FOR (i:Individu) REQUIRE i.id IS UNIQUE;
+
+// Càrrega de dades d'Habitatge
+LOAD CSV WITH HEADERS FROM 'file:///Dades/HABITATGES.csv' AS row
+WITH row WHERE row.Municipi IS NOT NULL AND row.Id_Llar IS NOT NULL
+MERGE (h:Habitatge {id_llar: toInteger(row.Id_Llar)})
+SET h.any_padro = toInteger(row.Any_Padro),
+    h.carrer = row.Carrer,
+    h.numero = row.Numero;
+
+// Càrrega de dades d'Individu
+LOAD CSV WITH HEADERS FROM 'file:///Dades/INDIVIDUAL.csv' AS row
+WITH row WHERE row.Id IS NOT NULL
+MERGE (i:Individu {id: toInteger(row.Id)})
+SET i.year = toInteger(row.Year),
+    i.name = row.name,
+    i.surname = row.surname,
+    i.second_surname = row.second_surname;
+
+// Creació de relació "viu"
+LOAD CSV WITH HEADERS FROM 'file:///Dades/VIU.csv' AS row
+WITH row WHERE row.IND IS NOT NULL AND row.VIU IS NOT NULL
+MATCH (h:Habitatge {id_llar: toInteger(row.HOUSE_ID)})
+MATCH (i:Individu {id: toInteger(row.IND)})
+MERGE (i)-[:VIU {location: row.Location, year: toInteger(row.Year)}]->(h);
+
+// Creació de relació "família"
+LOAD CSV WITH HEADERS FROM 'file:///Dades/FAMILIA.csv' AS row
+WITH row WHERE row.ID_1 IS NOT NULL AND row.ID_2 IS NOT NULL
+MATCH (i1:Individu {id: toInteger(row.ID_1)})
+MATCH (i2:Individu {id: toInteger(row.ID_2)})
+MERGE (i1)-[:FAMILIA {relacio: row.Relacio, relacio_harmonitzada: row.Relacio_Harmonitzada}]->(i2);
+
+// Creació de relació "same_as"
+LOAD CSV WITH HEADERS FROM 'file:///Dades/SAME_AS.csv' AS row
+WITH row WHERE row.Id_A IS NOT NULL AND row.Id_B IS NOT NULL
+MATCH (i1:Individu {id: toInteger(row.Id_A)})
+MATCH (i2:Individu {id: toInteger(row.Id_B)})
+MERGE (i1)-[:SAME_AS]->(i2);
+
+// Índexos per a consultes eficients
+CREATE INDEX habitatge_carrer_index IF NOT EXISTS FOR (h:Habitatge) ON (h.carrer);
+CREATE INDEX individu_name_index IF NOT EXISTS FOR (i:Individu) ON (i.name);
+
